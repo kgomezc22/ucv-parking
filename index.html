@@ -13,6 +13,8 @@
             --available: #2ecc71;
             --occupied: #e74c3c;
             --selected: #f1c40f;
+            --yape: #74226c;
+            --plin: #00b4c5;
         }
 
         body {
@@ -27,32 +29,44 @@
 
         .phone-container {
             width: 360px;
+            height: 640px;
             background: white;
             border-radius: 30px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            overflow: hidden;
+            overflow-y: auto;
             border: 8px solid #333;
+            position: relative;
+        }
+
+        .screen {
+            display: none;
+            height: 100%;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
         }
 
         .header {
             background-color: var(--ucv-blue);
             color: white;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
             border-bottom: 4px solid var(--ucv-red);
         }
 
-        .header h1 { margin: 0; font-size: 20px; }
-        .header p { margin: 5px 0 0 0; font-size: 12px; opacity: 0.8; }
+        .header h1 { margin: 0; font-size: 18px; }
+        .header p { margin: 5px 0 0 0; font-size: 11px; opacity: 0.8; }
 
-        .content { padding: 15px; }
+        .content { padding: 15px; flex: 1; }
 
         .info-box {
             background: #eef2f7;
             padding: 10px;
             border-radius: 10px;
             margin-bottom: 15px;
-            font-size: 13px;
+            font-size: 12px;
             text-align: center;
         }
 
@@ -60,184 +74,179 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .slot {
             aspect-ratio: 1;
             border-radius: 8px;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             color: white;
             cursor: pointer;
             transition: transform 0.2s;
         }
 
-        .slot:hover { transform: scale(1.05); }
         .slot.free { background-color: var(--available); }
         .slot.taken { background-color: var(--occupied); cursor: not-allowed; }
         .slot.selected { background-color: var(--selected); color: #333; }
 
-        .booking-panel {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 15px;
-            display: none;
-            text-align: center;
-        }
-
         .btn {
-            background-color: var(--ucv-blue);
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 12px;
             border-radius: 25px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             width: 100%;
             cursor: pointer;
             margin-top: 10px;
+            transition: background 0.2s;
         }
 
-        .btn-yape { background-color: #74226c; }
+        .btn-blue { background-color: var(--ucv-blue); }
+        .btn-yape { background-color: var(--yape); }
+        .btn-plin { background-color: var(--plin); }
 
-        #qr-screen {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        #qrcode {
+        /* Estilos de Pasarela */
+        .payment-option {
             display: flex;
-            justify-content: center;
-            margin: 20px 0;
+            align-items: center;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
         }
+
+        .payment-option input { margin-right: 15px; transform: scale(1.2); }
+        .payment-option.selected-opt { border-color: var(--ucv-blue); background-color: #f0f4f8; }
+
+        .form-group {
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; font-weight: bold; }
+        .form-group input { width: 93%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+
+        /* Animación de carga */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--ucv-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #qrcode { display: flex; justify-content: center; margin: 15px 0; }
     </style>
 </head>
 <body>
 
     <div class="phone-container">
-        <!-- Pantalla Principal / Mapa -->
-        <div id="main-screen">
+        
+        <!-- PANTALLA 1: MAPA DE ESTACIONAMIENTO -->
+        <div id="screen-map" class="screen active">
             <div class="header">
                 <h1>UCV Parking</h1>
                 <p>Sede Trujillo — Av. Larco</p>
             </div>
-            
             <div class="content">
                 <div class="info-box">
                     <strong>Tarifa Plana: S/. 10.00</strong><br>
-                    Selecciona un casillero verde para reservar.
+                    Selecciona un casillero verde para continuar.
                 </div>
-
                 <div class="parking-grid" id="grid"></div>
-
-                <div class="booking-panel" id="booking-box">
-                    <p>Has seleccionado la <strong>Cochera <span id="slot-number"></span></strong></p>
-                    <p style="font-size: 18px; color: var(--ucv-red); font-weight: bold;">Total a pagar: S/. 10.00</p>
-                    <button class="btn btn-yape" onclick="procesarPago()">Pagar con Billetera Digital</button>
+                <div id="next-box" style="display:none; text-align:center;">
+                    <p style="font-size:14px;">Cochera seleccionada: <strong id="slot-display"></strong></p>
+                    <button class="btn btn-blue" onclick="irAPasarela()">Continuar con la Reserva</button>
                 </div>
             </div>
         </div>
 
-        <!-- Pantalla de Ticket QR -->
-        <div id="qr-screen">
-            <div class="header" style="background-color: #2ecc71; border-bottom: none;">
-                <h1>¡Reserva Exitosa!</h1>
-                <p>Muestra este QR en la garita de ingreso</p>
+        <!-- PANTALLA 2: PASARELA DE PAGO (MEDIOS DE PAGO) -->
+        <div id="screen-payment" class="screen">
+            <div class="header">
+                <h1>Medios de Pago</h1>
+                <p>Monto a transferir: S/. 10.00</p>
             </div>
             <div class="content">
-                <h3>Cochera Reservada: <span id="final-slot"></span></h3>
-                <div id="qrcode"></div>
-                <p style="font-size: 12px; color: #666;">Válido únicamente para el turno seleccionado en la Sede Trujillo.</p>
-                <button class="btn" onclick="reiniciarApp()">Volver al Inicio</button>
+                <p style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">Selecciona cómo deseas pagar:</p>
+                
+                <div class="payment-option" onclick="seleccionarMetodo('yape')">
+                    <input type="radio" name="pay-method" id="opt-yape"> Yape
+                </div>
+                <div class="payment-option" onclick="seleccionarMetodo('plin')">
+                    <input type="radio" name="pay-method" id="opt-plin"> Plin
+                </div>
+                <div class="payment-option" onclick="seleccionarMetodo('card')">
+                    <input type="radio" name="pay-method" id="opt-card"> Tarjeta de Débito / Crédito
+                </div>
+
+                <!-- Formulario Dinámico para Tarjeta -->
+                <div id="card-form" style="display:none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="form-group">
+                        <label>Número de Tarjeta</label>
+                        <input type="text" placeholder="xxxx xxxx xxxx xxxx" maxlength="19" id="card-num">
+                    </div>
+                    <div class="form-group" style="display:inline-block; width:48%;">
+                        <label>Vencimiento</label>
+                        <input type="text" placeholder="MM/AA" maxlength="5">
+                    </div>
+                    <div class="form-group" style="display:inline-block; width:48%; float:right;">
+                        <label>CVV</label>
+                        <input type="password" placeholder="***" maxlength="3">
+                    </div>
+                </div>
+
+                <!-- Formulario Dinámico para Billeteras -->
+                <div id="wallet-form" style="display:none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="form-group">
+                        <label>Número de Celular Vinculado</label>
+                        <input type="text" placeholder="9xxxxxxxx" maxlength="9" id="phone-num">
+                    </div>
+                    <div class="form-group">
+                        <label>Código de Aprobación / Token</label>
+                        <input type="password" placeholder="******" maxlength="6">
+                    </div>
+                </div>
+
+                <button class="btn btn-blue" id="btn-pay-trigger" onclick="procesarValidacion()" style="margin-top:20px; display:none;">Confirmar y Validar Pago</button>
+                <button class="btn" style="background-color:#95a5a6;" onclick="regresarAlMapa()">Cancelar</button>
             </div>
         </div>
-    </div>
 
-    <script>
-        // Simulación de base de datos de cocheras (true = ocupado, false = libre)
-        const slotsData = [
-            { id: 1, taken: false }, { id: 2, taken: true }, { id: 3, taken: false }, { id: 4, taken: false },
-            { id: 5, taken: true },  { id: 6, taken: false }, { id: 7, taken: false }, { id: 8, taken: true },
-            { id: 9, taken: false }, { id: 10, taken: false }, { id: 11, taken: false }, { id: 12, taken: false }
-        ];
+        <!-- PANTALLA 3: PROCESANDO Y VERIFICANDO PAGO (PANTALLA DE CONTROL) -->
+        <div id="screen-loading" class="screen" style="justify-content: center; align-items: center; text-align: center;">
+            <div class="content" style="display: flex; flex-direction: column; justify-content: center;">
+                <div class="loader"></div>
+                <h3 style="color: var(--ucv-blue); margin-bottom: 5px;">Verificando Transacción...</h3>
+                <p style="font-size:13px; color:#666;">Conectando con la entidad financiera para verificar el abono de S/. 10.00.</p>
+            </div>
+        </div>
 
-        let selectedSlot = null;
-        const grid = document.getElementById('grid');
-        const bookingBox = document.getElementById('booking-box');
-        const slotNumberText = document.getElementById('slot-number');
-
-        // Generar dinámicamente el mapa de estacionamiento
-        function initGrid() {
-            grid.innerHTML = '';
-            slotsData.forEach(slot => {
-                const element = document.createElement('div');
-                element.classList.add('slot');
-                element.innerText = `C-${slot.id}`;
-
-                if (slot.taken) {
-                    element.classList.add('taken');
-                } else {
-                    element.classList.add('free');
-                    element.onclick = () => seleccionarCochera(slot.id, element);
-                }
-                grid.appendChild(element);
-            });
-        }
-
-        // Lógica de selección de un casillero
-        function seleccionarCochera(id, element) {
-            document.querySelectorAll('.slot').forEach(el => el.classList.remove('selected'));
-            
-            selectedSlot = id;
-            element.classList.add('selected');
-            
-            slotNumberText.innerText = `C-${id}`;
-            bookingBox.style.display = 'block';
-        }
-
-        // Simulación de pasarela de pago y generación de QR
-        function procesarPago() {
-            if (!selectedSlot) return;
-
-            // Ocultar pantalla de reserva y mostrar la del QR
-            document.getElementById('main-screen').style.display = 'none';
-            document.getElementById('qr-screen').style.display = 'block';
-            document.getElementById('final-slot').innerText = `C-${selectedSlot}`;
-
-            // Limpiar QR anterior si existe
-            document.getElementById('qrcode').innerHTML = '';
-
-            // Generar el código QR con la información de la transacción
-            new QRCode(document.getElementById("qrcode"), {
-                text: `UCV-TRUJILLO|COCHERA:${selectedSlot}|MONTO:10.00|VALIDO:${new Date().toLocaleDateString()}`,
-                width: 160,
-                height: 160
-            });
-        }
-
-        // Restablecer el estado para una nueva simulación
-        function reiniciarApp() {
-            // Simular que la cochera elegida ahora está ocupada
-            const index = slotsData.findIndex(s => s.id === selectedSlot);
-            if(index !== -1) slotsData[index].taken = true;
-
-            selectedSlot = null;
-            bookingBox.style.display = 'none';
-            document.getElementById('qr-screen').style.display = 'none';
-            document.getElementById('main-screen').style.display = 'block';
-            
-            initGrid();
-        }
-
-        // Iniciar la aplicación al cargar la página
-        initGrid();
-    </script>
-</body>
-</html>
+        <!-- PANTALLA 4: TICKET EXITOSO Y QR DE INGRESO -->
+        <div id="screen-success" class="screen">
+            <div class="header" style="background-color: var(--available); border-bottom: none;">
+                <h1>✓ Pago Verificado</h1>
+                <p>Cochera reservada exitosamente</p>
+            </div>
+            <div class="content" style="text-align:center;">
+                <div style="background-color: #e8f8f5; color: #117a65; padding: 8px; border-radius: 8px; font-size:12px; font-weight:bold; margin-bottom:15px;">
+                    ESTADO: VERIFICADO Y PAGADO (S/. 10.00)
+                </div>
+                <h3 style="margin:5px 0;">Código de Entrada QR</h3>
+                <p style="font-size:13px; margin:0 0 10px 0;">Cochera Asignada: <strong id="final-slot-text" style="color:var(--ucv-red); font-size:16px;"></strong></p>
+                
+                <div id="qrcode"></div>
+                
